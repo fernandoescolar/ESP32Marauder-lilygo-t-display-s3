@@ -1,8 +1,9 @@
 #include "SDInterface.h"
 #include "lang_var.h"
-#ifdef LILYGO_T_DISPLAY_S3R8
+//#ifdef USE_SD_MMC
 #include "SD_MMC.h"
-#endif
+//#endif
+#include "CSerial.h"
 
 bool SDInterface::initSD() {
   #ifdef HAS_SD
@@ -11,46 +12,35 @@ bool SDInterface::initSD() {
     #ifdef KIT
       pinMode(SD_DET, INPUT);
       if (digitalRead(SD_DET) == LOW) {
-        Serial.println(F("SD Card Detect Pin Detected"));
+        CSerial.println(F("SD Card Detect Pin Detected"));
       }
       else {
-        Serial.println(F("SD Card Detect Pin Not Detected"));
+        CSerial.println(F("SD Card Detect Pin Not Detected"));
         this->supported = false;
         return false;
       }
     #endif
 
     pinMode(SD_CS, OUTPUT);
-
     delay(10);
-    #if defined(MARAUDER_M5STICKC)
-      /* Set up SPI SD Card using external pin header
-      StickCPlus Header - SPI SD Card Reader
-                  3v3   -   3v3
-                  GND   -   GND
-                   G0   -   CLK
-              G36/G25   -   MISO
-                  G26   -   MOSI
-                        -   CS (jumper to SD Card GND Pin)
-      */
-      enum { SPI_SCK = 0, SPI_MISO = 36, SPI_MOSI = 26 };
+    
+    #if defined(HAS_SD_SPI)
       this->spiExt = new SPIClass();
-      this->spiExt->begin(SPI_SCK, SPI_MOSI, SPI_MISO, SD_CS);
-      if (!SD.begin(SD_CS, *(this->spiExt))) {
-    #elif defined(LILYGO_T_DISPLAY_S3R8)
-      enum { SPI_SCK = 11, SPI_MISO = 12, SPI_MOSI = 13 };
-      SD_MMC.setPins(SPI_SCK, SPI_MOSI, SPI_MISO);
+      this->spiExt->begin(SD_SPI_SCK, SD_SPI_MISO, SD_SPI_MOSI, SD_CS);
+      if (!SD.begin(SD_CS, *(this->spiExt), 27000000)) {
+    #elif defined(USE_SD_MMC)
+      SD_MMC.setPins(SD_SPI_SCK, SD_SPI_MOSI, SD_SPI_MISO);
       if (!SD_MMC.begin("/sdcard", true, true)) {
     #else
       if (!SD.begin(SD_CS)) {
     #endif
-      Serial.println(F("Failed to mount SD Card"));
+      CSerial.println(F("Failed to mount SD Card"));
       this->supported = false;
       return false;
     }
     else {
       this->supported = true;
-      #ifdef LILYGO_T_DISPLAY_S3R8
+      #ifdef USE_SD_MMC
       this->cardType = SD_MMC.cardType();
       this->cardSizeMB = SD_MMC.cardSize() / (1024 * 1024);
       #else
@@ -58,15 +48,15 @@ bool SDInterface::initSD() {
       this->cardSizeMB = SD.cardSize() / (1024 * 1024);
       #endif
       //if (cardType == CARD_MMC)
-      //  Serial.println(F("SD: MMC Mounted"));
+      //  CSerial.println(F("SD: MMC Mounted"));
       //else if(cardType == CARD_SD)
-      //    Serial.println(F("SD: SDSC Mounted"));
+      //    CSerial.println(F("SD: SDSC Mounted"));
       //else if(cardType == CARD_SDHC)
-      //    Serial.println(F("SD: SDHC Mounted"));
+      //    CSerial.println(F("SD: SDHC Mounted"));
       //else
-      //    Serial.println(F("SD: UNKNOWN Card Mounted"));
-    
-      //Serial.printf("SD Card Size: %lluMB\n", this->cardSizeMB);
+      //    CSerial.println(F("SD: UNKNOWN Card Mounted"));
+
+      CSerial.printf("SD Card Size: %lluMB\n", this->cardSizeMB);
 
       if (this->supported) {
         const int NUM_DIGITS = log10(this->cardSizeMB) + 1;
@@ -79,36 +69,36 @@ bool SDInterface::initSD() {
             sz[i] = '0' + (this->cardSizeMB % 10);
             display_string.concat((String)sz[i]);
         }
-  
+
         this->card_sz = sz;
       }
 
-      #ifdef LILYGO_T_DISPLAY_S3R8
+      #ifdef USE_SD_MMC
       if (!SD_MMC.exists("/SCRIPTS")) {
         SD_MMC.mkdir("/SCRIPTS");
       #else
       if (!SD.exists("/SCRIPTS")) {
         SD.mkdir("/SCRIPTS");
       #endif
-        Serial.println("/SCRIPTS created");
+        CSerial.println("/SCRIPTS created");
       }
 
       this->sd_files = new LinkedList<String>();
 
       this->sd_files->add("Back");
-    
+
       return true;
   }
 
   #else
-    Serial.println("SD support disabled, skipping init");
+    CSerial.println("SD support disabled, skipping init");
     return false;
   #endif
 }
 
 File SDInterface::getFile(String path) {
   if (this->supported) {
-    #ifdef LILYGO_T_DISPLAY_S3R8
+    #ifdef USE_SD_MMC
     File file = SD_MMC.open(path, FILE_READ);
     #else
     File file = SD.open(path, FILE_READ);
@@ -120,7 +110,7 @@ File SDInterface::getFile(String path) {
 }
 
 bool SDInterface::removeFile(String file_path) {
-  #ifdef LILYGO_T_DISPLAY_S3R8
+  #ifdef USE_SD_MMC
   if (SD_MMC.remove(file_path))
   #else
   if (SD.remove(file_path))
@@ -132,7 +122,7 @@ bool SDInterface::removeFile(String file_path) {
 
 void SDInterface::listDirToLinkedList(LinkedList<String>* file_names, String str_dir, String ext) {
   if (this->supported) {
-    #ifdef LILYGO_T_DISPLAY_S3R8
+    #ifdef USE_SD_MMC
     File dir = SD_MMC.open(str_dir);
     #else
     File dir = SD.open(str_dir);
@@ -162,7 +152,7 @@ void SDInterface::listDirToLinkedList(LinkedList<String>* file_names, String str
 
 void SDInterface::listDir(String str_dir){
   if (this->supported) {
-    #ifdef LILYGO_T_DISPLAY_S3R8
+    #ifdef USE_SD_MMC
     File dir = SD_MMC.open(str_dir);
     #else
     File dir = SD.open(str_dir);
@@ -176,11 +166,11 @@ void SDInterface::listDir(String str_dir){
       }
       //for (uint8_t i = 0; i < numTabs; i++)
       //{
-      //  Serial.print('\t');
+      //  CSerial.print('\t');
       //}
-      Serial.print(entry.name());
-      Serial.print("\t");
-      Serial.println(entry.size());
+      CSerial.print(entry.name());
+      CSerial.print("\t");
+      CSerial.println(entry.size());
       entry.close();
     }
   }
@@ -193,10 +183,10 @@ void SDInterface::runUpdate() {
     display_obj.tft.setCursor(0, TFT_HEIGHT / 3);
     display_obj.tft.setTextSize(1);
     display_obj.tft.setTextColor(TFT_WHITE);
-  
+
     display_obj.tft.println(F(text15));
   #endif
-  #ifdef LILYGO_T_DISPLAY_S3R8
+  #ifdef USE_SD_MMC
   File updateBin = SD_MMC.open("/update.bin");
   #else
   File updateBin = SD.open("/update.bin");
@@ -207,7 +197,7 @@ void SDInterface::runUpdate() {
         display_obj.tft.setTextColor(TFT_RED);
         display_obj.tft.println(F(text_table2[0]));
       #endif
-      Serial.println(F("Error, could not find \"update.bin\""));
+      CSerial.println(F("Error, could not find \"update.bin\""));
       #ifdef HAS_SCREEN
         display_obj.tft.setTextColor(TFT_WHITE);
       #endif
@@ -221,7 +211,7 @@ void SDInterface::runUpdate() {
       #ifdef HAS_SCREEN
         display_obj.tft.println(F(text_table2[1]));
       #endif
-      Serial.println(F("Starting update over SD. Please wait..."));
+      CSerial.println(F("Starting update over SD. Please wait..."));
       this->performUpdate(updateBin, updateSize);
     }
     else {
@@ -229,7 +219,7 @@ void SDInterface::runUpdate() {
         display_obj.tft.setTextColor(TFT_RED);
         display_obj.tft.println(F(text_table2[2]));
       #endif
-      Serial.println(F("Error, file is empty"));
+      CSerial.println(F("Error, file is empty"));
       #ifdef HAS_SCREEN
         display_obj.tft.setTextColor(TFT_WHITE);
       #endif
@@ -237,12 +227,12 @@ void SDInterface::runUpdate() {
     }
 
     updateBin.close();
-    
+
       // whe finished remove the binary from sd card to indicate end of the process
     #ifdef HAS_SCREEN
       display_obj.tft.println(F(text_table2[3]));
     #endif
-    Serial.println(F("rebooting..."));
+    CSerial.println(F("rebooting..."));
     //SD.remove("/update.bin");
     delay(1000);
     ESP.restart();
@@ -252,7 +242,7 @@ void SDInterface::runUpdate() {
       display_obj.tft.setTextColor(TFT_RED);
       display_obj.tft.println(F(text_table2[4]));
     #endif
-    Serial.println(F("Could not load update.bin from sd root"));
+    CSerial.println(F("Could not load update.bin from sd root"));
     #ifdef HAS_SCREEN
       display_obj.tft.setTextColor(TFT_WHITE);
     #endif
@@ -260,7 +250,7 @@ void SDInterface::runUpdate() {
 }
 
 void SDInterface::performUpdate(Stream &updateSource, size_t updateSize) {
-  if (Update.begin(updateSize)) {   
+  if (Update.begin(updateSize)) {
     #ifdef HAS_SCREEN
       display_obj.tft.println(text_table2[5] + String(updateSize));
       display_obj.tft.println(F(text_table2[6]));
@@ -270,28 +260,28 @@ void SDInterface::performUpdate(Stream &updateSource, size_t updateSize) {
       #ifdef HAS_SCREEN
         display_obj.tft.println(text_table2[7] + String(written) + text_table2[10]);
       #endif
-      Serial.println("Written : " + String(written) + " successfully");
+      CSerial.println("Written : " + String(written) + " successfully");
     }
     else {
       #ifdef HAS_SCREEN
         display_obj.tft.println(text_table2[8] + String(written) + "/" + String(updateSize) + text_table2[9]);
       #endif
-      Serial.println("Written only : " + String(written) + "/" + String(updateSize) + ". Retry?");
+      CSerial.println("Written only : " + String(written) + "/" + String(updateSize) + ". Retry?");
     }
     if (Update.end()) {
-      Serial.println("OTA done!");
+      CSerial.println("OTA done!");
       if (Update.isFinished()) {
         #ifdef HAS_SCREEN
           display_obj.tft.println(F(text_table2[11]));
         #endif
-        Serial.println(F("Update successfully completed. Rebooting."));
+        CSerial.println(F("Update successfully completed. Rebooting."));
       }
       else {
         #ifdef HAS_SCREEN
           display_obj.tft.setTextColor(TFT_RED);
           display_obj.tft.println(text_table2[12]);
         #endif
-        Serial.println("Update not finished? Something went wrong!");
+        CSerial.println("Update not finished? Something went wrong!");
         #ifdef HAS_SCREEN
           display_obj.tft.setTextColor(TFT_WHITE);
         #endif
@@ -301,7 +291,7 @@ void SDInterface::performUpdate(Stream &updateSource, size_t updateSize) {
       #ifdef HAS_SCREEN
         display_obj.tft.println(text_table2[13] + String(Update.getError()));
       #endif
-      Serial.println("Error Occurred. Error #: " + String(Update.getError()));
+      CSerial.println("Error Occurred. Error #: " + String(Update.getError()));
     }
 
   }
@@ -310,7 +300,7 @@ void SDInterface::performUpdate(Stream &updateSource, size_t updateSize) {
     #ifdef HAS_SCREEN
       display_obj.tft.println(text_table2[14]);
     #endif
-    Serial.println("Not enough space to begin OTA");
+    CSerial.println("Not enough space to begin OTA");
   }
 }
 

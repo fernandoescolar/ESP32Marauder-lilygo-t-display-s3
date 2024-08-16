@@ -18,6 +18,7 @@
 #ifdef HAS_BT
   #include "esp_bt.h"
 #endif
+#include "CSerial.h"
 
 #define jquery_min_js_v3_2_1_gz_len 30178
 
@@ -25,13 +26,13 @@ PROGMEM const char* host = "esp32marauder";
 PROGMEM const char* ssid = "MarauderOTA";
 PROGMEM const char* password = "justcallmekoko";
 
-wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT(); 
+wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
 bool serving = false;
 
 int num_sta = 0;
 
-PROGMEM const char* loginIndex = 
+PROGMEM const char* loginIndex =
  "<form name='loginForm'>"
     "<table width='20%' bgcolor='A09F9F' align='center'>"
         "<tr>"
@@ -71,12 +72,12 @@ PROGMEM const char* loginIndex =
     "}"
     "}"
 "</script>";
- 
+
 /*
  * Server Index Page
  */
- 
-PROGMEM const char* serverIndex = 
+
+PROGMEM const char* serverIndex =
 "<script src='/jquery.min.js'></script>"
 "Because the lack of an asynchronous webserver in this Arduino sketch like 'ESPAsyncWebServer', <br/>"
 "both file 'serverIndex' and 'jquery.min.js' can't be read from the webserver at the same time. <br/><br/>"
@@ -112,7 +113,7 @@ PROGMEM const char* serverIndex =
   "return xhr;"
   "},"
   "success:function(d, s) {"
-  "console.log('success!')" 
+  "console.log('success!')"
  "},"
  "error: function (a, b, c) {"
  "}"
@@ -158,33 +159,33 @@ WebServer server(80);
 
 void webMain()
 {
-  //Serial.println("Running the shits");
+  //CSerial.println("Running the shits");
   // Notify if client has connected to the update server
 
-  
+
   int current_sta = WiFi.softAPgetStationNum();
-  
+
   if (current_sta < num_sta)
   {
     num_sta = current_sta;
-    Serial.print("Update server: Client disconnected -> ");
-    Serial.println(num_sta);
+    CSerial.print("Update server: Client disconnected -> ");
+    CSerial.println(num_sta);
   }
   else if (current_sta > num_sta)
   {
     num_sta = current_sta;
-    Serial.print("Update server: Client connected -> ");
-    Serial.println(num_sta);
+    CSerial.print("Update server: Client connected -> ");
+    CSerial.println(num_sta);
   }
-  
-  
+
+
   server.handleClient();
   delay(1);
 }
 
 // Callback for the embedded jquery.min.js page
 void onJavaScript(void) {
-    Serial.println("onJavaScript(void)");
+    CSerial.println("onJavaScript(void)");
     server.setContentLength(jquery_min_js_v3_2_1_gz_len);
     server.sendHeader(F("Content-Encoding"), F("gzip"));
     server.send_P(200, "text/javascript", jquery_min_js_v3_2_1_gz, jquery_min_js_v3_2_1_gz_len);
@@ -193,43 +194,43 @@ void onJavaScript(void) {
 void setupOTAupdate()
 {
   uint8_t newMACAddress[] = {0x06, 0x07, 0x0D, 0x09, 0x0E, 0x0D};
-  
 
-  Serial.println("Configuring update server...");
 
-  
+  CSerial.println("Configuring update server...");
+
+
   // Start WiFi AP
-  Serial.println("Initializing WiFi...");
+  CSerial.println("Initializing WiFi...");
   //wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   esp_wifi_init(&cfg);
   //esp_wifi_set_storage(WIFI_STORAGE_RAM);
   if (esp_wifi_set_storage(WIFI_STORAGE_FLASH) != ESP_OK)
-    Serial.println("Could not set WiFi Storage!");
+    CSerial.println("Could not set WiFi Storage!");
   esp_wifi_set_mode(WIFI_MODE_NULL);
   esp_wifi_start();
 
-  Serial.println("Starting softAP...");
+  CSerial.println("Starting softAP...");
   esp_wifi_set_mac(WIFI_IF_AP, &newMACAddress[0]);
   WiFi.softAP(ssid, password);
-  Serial.println("");
+  CSerial.println("");
 
-  Serial.println("Displaying settings to TFT...");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.softAPIP());
+  CSerial.println("Displaying settings to TFT...");
+  CSerial.print("IP address: ");
+  CSerial.println(WiFi.softAPIP());
 
   /*use mdns for host name resolution*/
   /*
   if (!MDNS.begin(host)) { //http://esp32.local
-    Serial.println("Error setting up MDNS responder!");
+    CSerial.println("Error setting up MDNS responder!");
     while (1) {
       delay(1000);
     }
   }
-  Serial.println("mDNS responder started");
+  CSerial.println("mDNS responder started");
   */
 
   // return javascript jquery
-  Serial.println("Setting server behavior...");
+  CSerial.println("Setting server behavior...");
   server.on("/jquery.min.js", HTTP_GET, onJavaScript);
   /*return index page which is stored in serverIndex */
   server.on("/", HTTP_GET, []() {
@@ -248,7 +249,7 @@ void setupOTAupdate()
   }, []() {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
-      Serial.printf("Update: %s\n", upload.filename.c_str());
+      CSerial.printf("Update: %s\n", upload.filename.c_str());
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
         Update.printError(Serial);
       }
@@ -258,11 +259,11 @@ void setupOTAupdate()
         Update.printError(Serial);
       }
 
-      
-      //Serial.println(upload.totalSize);
+
+      //CSerial.println(upload.totalSize);
     } else if (upload.status == UPLOAD_FILE_END) {
       if (Update.end(true)) { //true to set the size to the current progress
-        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        CSerial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
         delay(1000);
       } else {
         Update.printError(Serial);
@@ -270,21 +271,21 @@ void setupOTAupdate()
     }
   });
 
-  
-  Serial.println("Finished setting server behavior");
-  Serial.println("Starting server...");
+
+  CSerial.println("Finished setting server behavior");
+  CSerial.println("Starting server...");
   server.begin();
 
-  Serial.println("Completed update server setup\n");
-  Serial.println("---------------------------------\n");
-  Serial.println("SSID: " + (String)ssid);
-  Serial.println("Network Password: " + (String)password);
-  Serial.println("Username: admin");
-  Serial.println("Password: admin");
+  CSerial.println("Completed update server setup\n");
+  CSerial.println("---------------------------------\n");
+  CSerial.println("SSID: " + (String)ssid);
+  CSerial.println("Network Password: " + (String)password);
+  CSerial.println("Username: admin");
+  CSerial.println("Password: admin");
 }
 
 void shutdownServer() {
-  Serial.println("Closing Update Server...");
+  CSerial.println("Closing Update Server...");
   server.stop();
   WiFi.mode(WIFI_OFF);
   esp_wifi_set_mode(WIFI_MODE_NULL);
@@ -293,12 +294,12 @@ void shutdownServer() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  CSerial.begin(115200);
 
   delay(100);
 
-  Serial.println("\n\nMarauder OTA Update\n");
-  
+  CSerial.println("\n\nMarauder OTA Update\n");
+
   setupOTAupdate();
 
 }

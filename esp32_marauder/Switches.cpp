@@ -7,9 +7,9 @@ Switches::Switches() {
 	this->hold_lim = 2000;
 	this->cur_hold = 0;
 	this->isheld = false;
-	
+
 	pinMode(this->pin, INPUT);
-	
+
 	return;
 }
 
@@ -20,12 +20,12 @@ Switches::Switches(int pin, uint32_t hold_lim, bool pullup) {
 	this->hold_lim = hold_lim;
 	this->cur_hold = 0;
 	this->isheld = false;
-	
+
   if (pullup)
   	pinMode(this->pin, INPUT_PULLUP);
   else
     pinMode(this->pin, INPUT_PULLDOWN);
-	
+
 	return;
 }
 
@@ -43,7 +43,7 @@ bool Switches::isHeld() {
 
 bool Switches::getButtonState() {
 	int buttonState = digitalRead(this->pin);
-	
+
 	if ((this->pullup) && (buttonState == LOW))
 		return true;
 	else if ((!this->pullup) && (buttonState == HIGH))
@@ -54,7 +54,7 @@ bool Switches::getButtonState() {
 
 bool Switches::justPressed() {
 	bool btn_state = this->getButtonState();
-	
+
 	// Button was JUST pressed
 	if (btn_state && !this->pressed) {
 		this->hold_init = millis();
@@ -63,14 +63,14 @@ bool Switches::justPressed() {
 	}
 	else if (btn_state) { // Button is STILL pressed
 		// Check if button is held
-		//Serial.println("cur_hold: " + (String)this->cur_hold);
+		//CSerial.println("cur_hold: " + (String)this->cur_hold);
 		if ((millis() - this->hold_init) < this->hold_lim) {
 			this->isheld = false;
 		}
 		else {
 			this->isheld = true;
 		}
-		
+
 		this->pressed = btn_state;
 		return false;
 	}
@@ -83,7 +83,7 @@ bool Switches::justPressed() {
 
 bool Switches::justReleased() {
 	bool btn_state = this->getButtonState();
-	
+
 	// Button was JUST released
 	if (!btn_state && this->pressed) {
 		this->isheld = false;
@@ -94,5 +94,5 @@ bool Switches::justReleased() {
 		this->pressed = btn_state;
 		return false;
 	}
-	
+
 }

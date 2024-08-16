@@ -1,18 +1,20 @@
 #include "BatteryInterface.h"
 #include "lang_var.h"
+#include "CSerial.h"
+
 BatteryInterface::BatteryInterface() {
-  
+
 }
 
 void BatteryInterface::main(uint32_t currentTime) {
   if (currentTime != 0) {
     if (currentTime - initTime >= 3000) {
-      //Serial.println("Checking Battery Level");
+      //CSerial.println("Checking Battery Level");
       this->initTime = millis();
       int8_t new_level = this->getBatteryLevel();
       //this->battery_level = this->getBatteryLevel();
       if (this->battery_level != new_level) {
-        Serial.println(text00 + (String)new_level);
+        CSerial.println(text00 + (String)new_level);
         this->battery_level = new_level;
       }
     }

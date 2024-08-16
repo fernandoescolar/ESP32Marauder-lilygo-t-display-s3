@@ -1,5 +1,5 @@
 #include "EvilPortal.h"
-
+#include "CSerial.h"
 
 char apName[MAX_AP_NAME_SIZE] = "PORTAL";
 char index_html[MAX_HTML_SIZE] = "TEST";
@@ -24,7 +24,7 @@ void EvilPortal::setup() {
     if (sd_obj.supported) {
       sd_obj.listDirToLinkedList(html_files, "/", "html");
 
-      Serial.println("Evil Portal Found " + (String)html_files->size() + " HTML files");
+      CSerial.println("Evil Portal Found " + (String)html_files->size() + " HTML files");
     }
   #endif
 }
@@ -34,7 +34,7 @@ bool EvilPortal::begin(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
     return false;
   if (!this->setHtml())
     return false;
-    
+
   startPortal();
 
   return true;
@@ -51,7 +51,7 @@ String EvilPortal::get_password() {
 void EvilPortal::setupServer() {
   server.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
     request->send_P(200, "text/html", index_html);
-    Serial.println("client connected");
+    CSerial.println("client connected");
     #ifdef HAS_SCREEN
       this->sendToDisplay("Client connected to server");
     #endif
@@ -78,24 +78,24 @@ void EvilPortal::setupServer() {
       200, "text/html",
       "<html><head><script>setTimeout(() => { window.location.href ='/' }, 100);</script></head><body></body></html>");
   });
-  Serial.println("web server up");
+  CSerial.println("web server up");
 }
 
 void EvilPortal::setHtmlFromSerial() {
-  Serial.println("Setting HTML from serial...");
-  const char *htmlStr = Serial.readString().c_str();
+  CSerial.println("Setting HTML from CSerial...");
+  const char *htmlStr = CSerial.readString().c_str();
   strncpy(index_html, htmlStr, strlen(htmlStr));
   this->has_html = true;
   this->using_serial_html = true;
-  Serial.println("html set");
+  CSerial.println("html set");
 }
 
 bool EvilPortal::setHtml() {
   if (this->using_serial_html) {
-    Serial.println("html previously set");
+    CSerial.println("html previously set");
     return true;
   }
-  Serial.println("Setting HTML...");
+  CSerial.println("Setting HTML...");
   #ifdef HAS_SD
     File html_file = sd_obj.getFile("/" + this->target_html_name);
   #else
@@ -106,7 +106,7 @@ bool EvilPortal::setHtml() {
       this->sendToDisplay("Could not find /" + this->target_html_name);
       this->sendToDisplay("Touch to exit...");
     #endif
-    Serial.println("Could not find /" + this->target_html_name + ". Use stopscan...");
+    CSerial.println("Could not find /" + this->target_html_name + ". Use stopscan...");
     return false;
   }
   else {
@@ -116,7 +116,7 @@ bool EvilPortal::setHtml() {
         this->sendToDisplay("The Byte limit is " + (String)MAX_HTML_SIZE);
         this->sendToDisplay("Touch to exit...");
       #endif
-      Serial.println("The provided HTML is too large. Byte limit is " + (String)MAX_HTML_SIZE + "\nUse stopscan...");
+      CSerial.println("The provided HTML is too large. Byte limit is " + (String)MAX_HTML_SIZE + "\nUse stopscan...");
       return false;
     }
     String html = "";
@@ -127,7 +127,7 @@ bool EvilPortal::setHtml() {
     }
     strncpy(index_html, html.c_str(), strlen(html.c_str()));
     this->has_html = true;
-    Serial.println("html set");
+    CSerial.println("html set");
     html_file.close();
     return true;
   }
@@ -158,25 +158,25 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
         this->sendToDisplay("Could not find /ap.config.txt.");
         this->sendToDisplay("Touch to exit...");
       #endif
-      Serial.println("Could not find /ap.config.txt. Use stopscan...");
+      CSerial.println("Could not find /ap.config.txt. Use stopscan...");
       return false;
     }
     // Config file good. Proceed
     else {
-      // ap name too long. return false        
+      // ap name too long. return false
       if (ap_config_file.size() > MAX_AP_NAME_SIZE) {
         #ifdef HAS_SCREEN
           this->sendToDisplay("The given AP name is too large.");
           this->sendToDisplay("The Byte limit is " + (String)MAX_AP_NAME_SIZE);
           this->sendToDisplay("Touch to exit...");
         #endif
-        Serial.println("The provided AP name is too large. Byte limit is " + (String)MAX_AP_NAME_SIZE + "\nUse stopscan...");
+        CSerial.println("The provided AP name is too large. Byte limit is " + (String)MAX_AP_NAME_SIZE + "\nUse stopscan...");
         return false;
       }
       // AP name length good. Read from file into var
       while (ap_config_file.available()) {
         char c = ap_config_file.read();
-        Serial.print(c);
+        CSerial.print(c);
         if (isPrintable(c)) {
           ap_config.concat(c);
         }
@@ -185,7 +185,7 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
         this->sendToDisplay("AP name from config file");
         this->sendToDisplay("AP name: " + ap_config);
       #endif
-      Serial.println("AP name from config file: " + ap_config);
+      CSerial.println("AP name from config file: " + ap_config);
       ap_config_file.close();
     }
   }
@@ -199,14 +199,14 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
         this->sendToDisplay("The Byte limit is " + (String)MAX_AP_NAME_SIZE);
         this->sendToDisplay("Touch to exit...");
       #endif
-      Serial.println("The provided AP name is too large. Byte limit is " + (String)MAX_AP_NAME_SIZE + "\nUse stopscan...");
+      CSerial.println("The provided AP name is too large. Byte limit is " + (String)MAX_AP_NAME_SIZE + "\nUse stopscan...");
       return false;
     }
     #ifdef HAS_SCREEN
       this->sendToDisplay("AP name from SSID list");
       this->sendToDisplay("AP name: " + ap_config);
     #endif
-    Serial.println("AP name from SSID list: " + ap_config);
+    CSerial.println("AP name from SSID list: " + ap_config);
   }
   else if (temp_ap_name != "") {
     if (temp_ap_name.length() > MAX_AP_NAME_SIZE) {
@@ -215,7 +215,7 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
         this->sendToDisplay("The Byte limit is " + (String)MAX_AP_NAME_SIZE);
         this->sendToDisplay("Touch to exit...");
       #endif
-      Serial.println("The given AP name is too large. Byte limit is " + (String)MAX_AP_NAME_SIZE + "\nUse stopscan...");
+      CSerial.println("The given AP name is too large. Byte limit is " + (String)MAX_AP_NAME_SIZE + "\nUse stopscan...");
     }
     else {
       ap_config = temp_ap_name;
@@ -223,11 +223,11 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
         this->sendToDisplay("AP name from AP list");
         this->sendToDisplay("AP name: " + ap_config);
       #endif
-      Serial.println("AP name from AP list: " + ap_config);
+      CSerial.println("AP name from AP list: " + ap_config);
     }
   }
   else {
-    Serial.println("Could not configure Access Point. Use stopscan...");
+    CSerial.println("Could not configure Access Point. Use stopscan...");
     #ifdef HAS_SCREEN
       this->sendToDisplay("Could not configure Access Point.");
       this->sendToDisplay("Touch to exit...");
@@ -237,7 +237,7 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
   if (ap_config != "") {
     strncpy(apName, ap_config.c_str(), MAX_AP_NAME_SIZE);
     this->has_ap = true;
-    Serial.println("ap config set");
+    CSerial.println("ap config set");
     return true;
   }
   else
@@ -248,8 +248,8 @@ bool EvilPortal::setAP(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_
 void EvilPortal::startAP() {
   const IPAddress AP_IP(172, 0, 0, 1);
 
-  Serial.print("starting ap ");
-  Serial.println(apName);
+  CSerial.print("starting ap ");
+  CSerial.println(apName);
 
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(AP_IP, AP_IP, IPAddress(255, 255, 255, 0));
@@ -259,8 +259,8 @@ void EvilPortal::startAP() {
     this->sendToDisplay("AP started");
   #endif
 
-  Serial.print("ap ip address: ");
-  Serial.println(WiFi.softAPIP());
+  CSerial.print("ap ip address: ");
+  CSerial.println(WiFi.softAPIP());
 
   this->setupServer();
 
@@ -304,7 +304,7 @@ void EvilPortal::main(uint8_t scan_mode) {
           "u: " + this->user_name;
       String logValue2 = "p: " + this->password;
       String full_string = logValue1 + " " + logValue2 + "\n";
-      Serial.print(full_string);
+      CSerial.print(full_string);
       buffer_obj.append(full_string);
       #ifdef HAS_SCREEN
         this->sendToDisplay(full_string);

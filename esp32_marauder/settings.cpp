@@ -1,5 +1,11 @@
 #include "settings.h"
+#include "CSerial.h"
 
+#ifdef USE_FFAT
+  #define SETTINGS_FILE "/settings.jso"
+#else 
+  #define SETTINGS_FILE "/settings.json"
+#endif
 String Settings::getSettingsString() {
   return this->json_settings_string;
 }
@@ -7,48 +13,49 @@ String Settings::getSettingsString() {
 bool Settings::begin() {
   #ifndef USE_FFAT
   if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
-    Serial.println("Settings SPIFFS Mount Failed");
+    CSerial.println("Settings SPIFFS Mount Failed");
     return false;
   }
   #else
   if(!FFat.begin(FORMAT_SPIFFS_IF_FAILED)){
+      Serial.println("Settings FFAT Mount Failed");
         return false;
   }
-  Serial.println("Using FFat"); 
+  CSerial.println("Using FFat");
 
   File root = FFat.open("/");
   if(!root){
-    Serial.println("failed to open root directory - formatiing");
+    CSerial.println("failed to open root directory - formatiing");
       FFat.format();
     }
   else {
-    Serial.println("FFat root good");
+    CSerial.println("FFat root good");
     root.close();
   }
-  Serial.println("Found default fs FFat");
+  CSerial.println("Found default fs FFat");
   #endif
 
   File settingsFile;
 
-  //SPIFFS.remove("/settings.json"); // NEED TO REMOVE THIS LINE
+  //SPIFFS.remove(SETTINGS_FILE); // NEED TO REMOVE THIS LINE
 
   #ifndef USE_FFAT
-  if (SPIFFS.exists("/settings.json")) {
-    settingsFile = SPIFFS.open("/settings.json", FILE_READ);    
+  if (SPIFFS.exists(SETTINGS_FILE)) {
+    settingsFile = SPIFFS.open(SETTINGS_FILE, FILE_READ);
   }
-  #else 
-  if(FFat.exists("/settings.json")) {
-    settingsFile = FFat.open("/settings.json", FILE_READ);    
+  #else
+  if(FFat.exists(SETTINGS_FILE)) {
+    settingsFile = FFat.open(SETTINGS_FILE, FILE_READ);
   }
   #endif
 
   if (!settingsFile) {
       settingsFile.close();
-      Serial.println(F("Could not find settings file"));
+      CSerial.println(F("Could not find settings file"));
       #ifndef USE_FFAT
       if (this->createDefaultSettings(SPIFFS))
         return true;
-      #else 
+      #else
       if (this->createDefaultSettings(FFat))
         return true;
       #endif
@@ -56,17 +63,17 @@ bool Settings::begin() {
         return false;
   }
 
-  Serial.println("Created settings file");
+  CSerial.println("Created settings file");
 
   String json_string;
   DynamicJsonDocument jsonBuffer(1024);
   DeserializationError error = deserializeJson(jsonBuffer, settingsFile);
   serializeJson(jsonBuffer, json_string);
-  //Serial.println("Settings: " + (String)json_string + "\n");
+  //CSerial.println("Settings: " + (String)json_string + "\n");
   //this->printJsonSettings(json_string);
 
   this->json_settings_string = json_string;
-  
+
   return true;
 }
 
@@ -79,7 +86,7 @@ int Settings::loadSetting<int>(String key) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   for (int i = 0; i < json["Settings"].size(); i++) {
@@ -94,11 +101,11 @@ int Settings::loadSetting<int>(String key) {
 template<>
 String Settings::loadSetting<String>(String key) {
   //return this->json_settings_string;
-  
+
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   for (int i = 0; i < json["Settings"].size(); i++) {
@@ -115,7 +122,7 @@ bool Settings::loadSetting<bool>(String key) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   for (int i = 0; i < json["Settings"].size(); i++) {
@@ -132,7 +139,7 @@ uint8_t Settings::loadSetting<uint8_t>(String key) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   for (int i = 0; i < json["Settings"].size(); i++) {
@@ -151,7 +158,7 @@ bool Settings::saveSetting<bool>(String key, bool value) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   String settings_string;
@@ -161,34 +168,34 @@ bool Settings::saveSetting<bool>(String key, bool value) {
     if (json["Settings"][i]["name"].as<String>() == key) {
       json["Settings"][i]["value"] = value;
 
-      Serial.println("Saving setting...");
+      CSerial.println("Saving setting...");
 
       #ifndef USE_FFAT
-      settingsFile = SPIFFS.open("/settings.json", FILE_WRITE);
+      settingsFile = SPIFFS.open(SETTINGS_FILE, FILE_WRITE);
       #else
-      settingsFile = FFat.open("/settings.json", FILE_WRITE);
+      settingsFile = FFat.open(SETTINGS_FILE, FILE_WRITE);
       #endif
-      
+
       if (!settingsFile) {
-        Serial.print(F("Failed to create settings file - "));
-        Serial.println(settingsFile, DEC);
+        CSerial.print(F("Failed to create settings file - "));
+        CSerial.println(settingsFile, DEC);
         return false;
       }
 
       if (serializeJson(json, settingsFile) == 0) {
-        Serial.println(F("Failed to write to file"));
+        CSerial.println(F("Failed to write to file"));
       }
       if (serializeJson(json, settings_string) == 0) {
-        Serial.println(F("Failed to write to string"));
+        CSerial.println(F("Failed to write to string"));
       }
-    
+
       // Close the file
       settingsFile.close();
-    
+
       this->json_settings_string = settings_string;
-    
+
       this->printJsonSettings(settings_string);
-      
+
       return true;
     }
   }
@@ -199,19 +206,19 @@ bool Settings::toggleSetting(String key) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   for (int i = 0; i < json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key) {
       if (json["Settings"][i]["value"]) {
         saveSetting<bool>(key, false);
-        Serial.println("Setting value to false");
+        CSerial.println("Setting value to false");
         return false;
       }
       else {
         saveSetting<bool>(key, true);
-        Serial.println("Setting value to true");
+        CSerial.println("Setting value to true");
         return true;
       }
 
@@ -224,7 +231,7 @@ String Settings::setting_index_to_name(int i) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   return json["Settings"][i]["name"];
@@ -234,7 +241,7 @@ int Settings::getNumberSettings() {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
 
   return json["Settings"].size();
@@ -244,9 +251,9 @@ String Settings::getSettingType(String key) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
-  
+
   for (int i = 0; i < json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key)
       return json["Settings"][i]["type"];
@@ -257,26 +264,26 @@ void Settings::printJsonSettings(String json_string) {
   DynamicJsonDocument json(1024); // ArduinoJson v6
 
   if (deserializeJson(json, json_string)) {
-    Serial.println("\nCould not parse json");
+    CSerial.println("\nCould not parse json");
   }
-  
-  Serial.println("Settings\n----------------------------------------------");
+
+  CSerial.println("Settings\n----------------------------------------------");
   for (int i = 0; i < json["Settings"].size(); i++) {
-    Serial.println("Name: " + json["Settings"][i]["name"].as<String>());
-    Serial.println("Type: " + json["Settings"][i]["type"].as<String>());
-    Serial.println("Value: " + json["Settings"][i]["value"].as<String>());
-    Serial.println("----------------------------------------------");
+    CSerial.println("Name: " + json["Settings"][i]["name"].as<String>());
+    CSerial.println("Type: " + json["Settings"][i]["type"].as<String>());
+    CSerial.println("Value: " + json["Settings"][i]["value"].as<String>());
+    CSerial.println("----------------------------------------------");
   }
 }
 
 bool Settings::createDefaultSettings(fs::FS &fs) {
-  Serial.println(F("Creating default settings file: settings.json"));
-  
-  File settingsFile = fs.open("/settings.json", FILE_WRITE);
+  CSerial.println("Creating default settings file");
+
+  File settingsFile = fs.open(SETTINGS_FILE, FILE_WRITE);
 
   if (!settingsFile) {
-    Serial.print(F("Failed to create settings file - "));
-    Serial.println(settingsFile, DEC);
+    CSerial.print(F("Failed to create settings file - "));
+    CSerial.println(settingsFile, DEC);
     return false;
   }
 
@@ -321,10 +328,10 @@ bool Settings::createDefaultSettings(fs::FS &fs) {
 
   //jsonBuffer.printTo(settingsFile);
   if (serializeJson(jsonBuffer, settingsFile) == 0) {
-    Serial.println(F("Failed to write to file"));
+    CSerial.println(F("Failed to write to file"));
   }
   if (serializeJson(jsonBuffer, settings_string) == 0) {
-    Serial.println(F("Failed to write to string"));
+    CSerial.println(F("Failed to write to string"));
   }
 
   // Close the file
@@ -338,5 +345,5 @@ bool Settings::createDefaultSettings(fs::FS &fs) {
 }
 
 void Settings::main(uint32_t currentTime) {
-  
+
 }

@@ -1,5 +1,6 @@
 #include "Buffer.h"
 #include "lang_var.h"
+#include "CSerial.h"
 
 Buffer::Buffer(){
   bufA = (uint8_t*)malloc(BUF_SIZE);
@@ -21,11 +22,11 @@ void Buffer::createFile(String name, bool is_pcap){
     } while(fs->exists(fileName));
   }
 
-  Serial.println(fileName);
-  
+  CSerial.println(fileName);
+
   file = fs->open(fileName, FILE_WRITE);
   if(!file) {
-    Serial.println("failed to create file " + fileName);
+    CSerial.println("failed to create file " + fileName);
     return;
   }
   file.close();
@@ -53,7 +54,7 @@ void Buffer::open(bool is_pcap){
 void Buffer::openFile(String file_name, fs::FS* fs, bool serial, bool is_pcap) {
   bool save_pcap = settings_obj.loadSetting<bool>("SavePCAP");
   if (!save_pcap) {
-    Serial.println("Save pcap disabled");
+    CSerial.println("Save pcap disabled");
     this->fs = NULL;
     this->serial = false;
     writing = false;
@@ -62,15 +63,15 @@ void Buffer::openFile(String file_name, fs::FS* fs, bool serial, bool is_pcap) {
   this->fs = fs;
   this->serial = serial;
   if (this->fs) {
-    Serial.print("Creating file ");
-    Serial.println(file_name);
+    CSerial.print("Creating file ");
+    CSerial.println(file_name);
     createFile(file_name, is_pcap);
   }
   if (this->fs || this->serial) {
     open(is_pcap);
-    Serial.println("File open");
+    CSerial.println("File open");
   } else {
-    Serial.println("Writing disabled");
+    CSerial.println("Writing disabled");
     writing = false;
   }
 }
@@ -86,31 +87,31 @@ void Buffer::logOpen(String file_name, fs::FS* fs, bool serial) {
 void Buffer::add(const uint8_t* buf, uint32_t len, bool is_pcap){
   // buffer is full -> drop packet
   if((useA && bufSizeA + len >= BUF_SIZE && bufSizeB > 0) || (!useA && bufSizeB + len >= BUF_SIZE && bufSizeA > 0)){
-    //Serial.print(";"); 
+    //CSerial.print(";");
     return;
   }
-  
+
   if(useA && bufSizeA + len + 16 >= BUF_SIZE && bufSizeB == 0){
     useA = false;
-    //Serial.println("\nswitched to buffer B");
+    //CSerial.println("\nswitched to buffer B");
   }
   else if(!useA && bufSizeB + len + 16 >= BUF_SIZE && bufSizeA == 0){
     useA = true;
-    //Serial.println("\nswitched to buffer A");
+    //CSerial.println("\nswitched to buffer A");
   }
 
   uint32_t microSeconds = micros(); // e.g. 45200400 => 45s 200ms 400us
   uint32_t seconds = (microSeconds/1000)/1000; // e.g. 45200400/1000/1000 = 45200 / 1000 = 45s
 
   microSeconds -= seconds*1000*1000; // e.g. 45200400 - 45*1000*1000 = 45200400 - 45000000 = 400us (because we only need the offset)
-  
+
   if (is_pcap) {
     write(seconds); // ts_sec
     write(microSeconds); // ts_usec
     write(len); // incl_len
     write(len); // orig_len
   }
-  
+
   write(buf, len); // packet payload
 }
 
@@ -156,7 +157,7 @@ void Buffer::write(uint16_t n){
 void Buffer::write(const uint8_t* buf, uint32_t len){
   if(!writing) return;
   while(saving) delay(10);
-  
+
   if(useA){
     memcpy(&bufA[bufSizeA], buf, len);
     bufSizeA += len;
@@ -169,7 +170,7 @@ void Buffer::write(const uint8_t* buf, uint32_t len){
 void Buffer::saveFs(){
   file = fs->open(fileName, FILE_APPEND);
   if (!file) {
-    Serial.println(text02+fileName+"'");
+    CSerial.println(text02+fileName+"'");
     return;
   }
 
@@ -200,7 +201,7 @@ void Buffer::saveSerial() {
   const char* mark_close = "[BUF/CLOSE]";
   const size_t mark_close_len = strlen(mark_close);
 
-  // Additional buffer and memcpy's so that a single Serial.write() is called
+  // Additional buffer and memcpy's so that a single CSerial.write() is called
   // This is necessary so that other console output isn't mixed into buffer stream
   uint8_t* buf = (uint8_t*)malloc(mark_begin_len + bufSizeA + bufSizeB + mark_close_len);
   uint8_t* it = buf;
@@ -229,7 +230,7 @@ void Buffer::saveSerial() {
 
   memcpy(it, mark_close, mark_close_len);
   it += mark_close_len;
-  Serial.write(buf, it - buf);
+  CSerial.write(buf, it - buf);
   free(buf);
 }
 

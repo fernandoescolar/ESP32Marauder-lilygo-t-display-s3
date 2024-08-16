@@ -5,7 +5,7 @@ LedInterface::LedInterface() {
 }
 
 void LedInterface::RunSetup() {
-  //Serial.println("Setting neopixel to black...");
+  //CSerial.println("Setting neopixel to black...");
   #ifdef HAS_NEOPIXEL_LED
   strip.setBrightness(0);
   strip.begin();
@@ -56,7 +56,7 @@ uint8_t LedInterface::getMode() {
 void LedInterface::setColor(int r, int g, int b) {
   #ifdef HAS_NEOPIXEL_LED
   strip.setPixelColor(0, strip.Color(r, g, b));
-  strip.show();  
+  strip.show();
   #endif
 }
 

@@ -1,4 +1,5 @@
 #include "GpsInterface.h"
+#include "CSerial.h"
 
 #ifdef HAS_GPS
 
@@ -20,11 +21,11 @@ void GpsInterface::begin() {
     analogWrite(26, 243);
     delay(1);
 
-    Serial.println("Activated GPS");
+    CSerial.println("Activated GPS");
     delay(100);
   #endif*/
 
-  
+
   Serial2.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);
 
   MicroNMEA::sendSentence(Serial2, "$PSTMSETPAR,1201,0x00000042");
@@ -35,21 +36,21 @@ void GpsInterface::begin() {
   delay(3900);
 
   if (Serial2.available()) {
-    Serial.println("GPS Attached Successfully");
+    CSerial.println("GPS Attached Successfully");
     this->gps_enabled = true;
     while (Serial2.available()) {
       //Fetch the character one by one
       char c = Serial2.read();
-      //Serial.print(c);
+      //CSerial.print(c);
       //Pass the character to the library
       nmea.process(c);
     }
   }
   else {
     this->gps_enabled = false;
-    Serial.println("GPS Not Found");
+    CSerial.println("GPS Not Found");
   }
-  
+
 
   this->type_flag=GPSTYPE_NATIVE; //enforce default
   this->disable_queue(); //init the queue, disabled, kill NULLs
@@ -130,7 +131,7 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
                               this->text_cycles=0;
                             }
                           }
-                        
+
                         for(int i=0;i<size;i++){
                           this->text->add(this->text_in->get(i));
                         }
@@ -186,7 +187,7 @@ void GpsInterface::enqueue(MicroNMEA& nmea){
                             this->text_cycles=0;
                           }
                         }
-                      
+
                         for(int i=0;i<size;i++)
                           this->text->add(this->text_in->get(i));
 
@@ -340,11 +341,11 @@ void GpsInterface::setType(String t){
   else if(t == "navic")
     this->type_flag=GPSTYPE_NAVIC;
   else if(t == "qzss")
-    this->type_flag=GPSTYPE_QZSS;        
+    this->type_flag=GPSTYPE_QZSS;
   else if(t == "beidou")
     this->type_flag=GPSTYPE_BEIDOU;
   else if(t == "beidou_bd")
-    this->type_flag=GPSTYPE_BEIDOU_BD;    
+    this->type_flag=GPSTYPE_BEIDOU_BD;
   else
     this->type_flag=GPSTYPE_ALL;
 }
@@ -655,7 +656,7 @@ void GpsInterface::main() {
   while (Serial2.available()) {
     //Fetch the character one by one
     char c = Serial2.read();
-    //Serial.print(c);
+    //CSerial.print(c);
     //Pass the character to the library
     nmea.process(c);
   }

@@ -1,6 +1,7 @@
 #include "Display.h"
 #include "lang_var.h"
 #include "FFat.h"
+#include "CSerial.h"
 
 #ifdef HAS_SCREEN
 
@@ -19,7 +20,7 @@ void Display::RunSetup()
   #ifdef SCREEN_BUFFER
     screen_buffer = new LinkedList<String>();
   #endif
-  
+
   tft.init();
   #ifndef MARAUDER_M5STICKC
     tft.setRotation(0); // Portrait
@@ -33,16 +34,20 @@ void Display::RunSetup()
     tft.setRotation(1);
   #endif
 
+  #ifdef LILYGO_T_DISPLAY_S3R8
+    tft.setRotation(1);
+  #endif
+
   tft.setCursor(0, 0);
 
   #ifdef HAS_ILI9341
 
     #ifdef TFT_SHIELD
       uint16_t calData[5] = { 275, 3494, 361, 3528, 4 }; // tft.setRotation(0); // Portrait with TFT Shield
-      //Serial.println(F("Using TFT Shield"));
+      //CSerial.println(F("Using TFT Shield"));
     #else if defined(TFT_DIY)
       uint16_t calData[5] = { 339, 3470, 237, 3438, 2 }; // tft.setRotation(0); // Portrait with DIY TFT
-      //Serial.println(F("Using TFT DIY"));
+      //CSerial.println(F("Using TFT DIY"));
     #endif
     tft.setTouch(calData);
 
@@ -51,9 +56,9 @@ void Display::RunSetup()
   //tft.fillScreen(TFT_BLACK);
   clearScreen();
 
-  //Serial.println("SPI_FREQUENCY: " + (String)SPI_FREQUENCY);
-  //Serial.println("SPI_READ_FREQUENCY:" + (String)SPI_READ_FREQUENCY);
-  //Serial.println("SPI_TOUCH_FREQUENCY: " + (String)SPI_TOUCH_FREQUENCY);
+  //CSerial.println("SPI_FREQUENCY: " + (String)SPI_FREQUENCY);
+  //CSerial.println("SPI_READ_FREQUENCY:" + (String)SPI_READ_FREQUENCY);
+  //CSerial.println("SPI_TOUCH_FREQUENCY: " + (String)SPI_TOUCH_FREQUENCY);
 
   #ifdef KIT
     pinMode(KIT_LED_BUILTIN, OUTPUT);
@@ -112,14 +117,14 @@ void Display::tftDrawEapolColorKey()
 {
   //Display color key
   tft.setTextSize(1); tft.setTextColor(TFT_WHITE);
-  tft.fillRect(14, 0, 15, 8, TFT_CYAN); tft.setCursor(30, 0); tft.print(" - EAPOL"); 
+  tft.fillRect(14, 0, 15, 8, TFT_CYAN); tft.setCursor(30, 0); tft.print(" - EAPOL");
 }
 
 void Display::tftDrawColorKey()
 {
   //Display color key
   tft.setTextSize(1); tft.setTextColor(TFT_WHITE);
-  tft.fillRect(14, 0, 15, 8, TFT_GREEN); tft.setCursor(30, 0); tft.print(" - Beacons"); 
+  tft.fillRect(14, 0, 15, 8, TFT_GREEN); tft.setCursor(30, 0); tft.print(" - Beacons");
   tft.fillRect(14, 8, 15, 8, TFT_RED); tft.setCursor(30, 8); tft.print(" - Deauths");
   tft.fillRect(14, 16, 15, 8, TFT_BLUE); tft.setCursor(30, 16); tft.print(" - Probes");
 }
@@ -270,7 +275,7 @@ void Display::touchToExit()
 // Function to just draw the screen black
 void Display::clearScreen()
 {
-  //Serial.println(F("clearScreen()"));
+  //CSerial.println(F("clearScreen()"));
   tft.fillScreen(TFT_BLACK);
   tft.setCursor(0, 0);
 }
@@ -312,14 +317,14 @@ void Display::displayBuffer(bool do_clear)
           blank[(18+(yStart - TOP_FIXED_AREA_2) / TEXT_HEIGHT)%19] = xPos;
       #else
         xPos = 0;
-        if (this->screen_buffer->size() >= MAX_SCREEN_BUFFER) 
+        if (this->screen_buffer->size() >= MAX_SCREEN_BUFFER)
           this->scrollScreenBuffer();
 
         screen_buffer->add(display_buffer->shift());
 
         for (int i = 0; i < this->screen_buffer->size(); i++) {
           tft.setCursor(xPos, (i * 12) + (SCREEN_HEIGHT / 6));
-          for (int x = 0; x < TFT_WIDTH / CHAR_WIDTH; x++)
+          for (int x = 0; x < SCREEN_WIDTH / CHAR_WIDTH; x++)
             tft.print(" ");
           tft.setCursor(xPos, (i * 12) + (SCREEN_HEIGHT / 6));
           tft.setTextColor(TFT_GREEN, TFT_BLACK);
@@ -339,7 +344,7 @@ void Display::showCenterText(String text, int y)
 
 void Display::initScrollValues(bool tte)
 {
-  //Serial.println(F("initScrollValues()"));
+  //CSerial.println(F("initScrollValues()"));
   yDraw = YMAX - BOT_FIXED_AREA - TEXT_HEIGHT;
 
   xPos = 0;
@@ -364,7 +369,7 @@ void Display::initScrollValues(bool tte)
 
 // Function to execute hardware scroll for TFT screen
 int Display::scroll_line(uint32_t color) {
-  //Serial.println("scroll_line()");
+  //CSerial.println("scroll_line()");
   int yTemp = yStart; // Store the old yStart, this is where we draw the next line
   // Use the record of line lengths to optimise the rectangle size we need to erase the top line
 
@@ -372,7 +377,7 @@ int Display::scroll_line(uint32_t color) {
   if (!tteBar)
   {
     tft.fillRect(0,yStart,blank[(yStart-TOP_FIXED_AREA)/TEXT_HEIGHT],TEXT_HEIGHT, color);
-  
+
     // Change the top of the scroll area
     yStart+=TEXT_HEIGHT;
     // The value must wrap around as the screen memory is a circular buffer
@@ -381,7 +386,7 @@ int Display::scroll_line(uint32_t color) {
   else
   {
     tft.fillRect(0,yStart,blank[(yStart-TOP_FIXED_AREA_2)/TEXT_HEIGHT],TEXT_HEIGHT, color);
-  
+
     // Change the top of the scroll area
     yStart+=TEXT_HEIGHT;
     // The value must wrap around as the screen memory is a circular buffer
@@ -395,10 +400,10 @@ int Display::scroll_line(uint32_t color) {
 
 // Function to setup hardware scroll for TFT screen
 void Display::setupScrollArea(uint16_t tfa, uint16_t bfa) {
-  //Serial.println(F("setupScrollArea()"));
-  //Serial.println("   tfa: " + (String)tfa);
-  //Serial.println("   bfa: " + (String)bfa);
-  //Serial.println("yStart: " + (String)this->yStart);
+  //CSerial.println(F("setupScrollArea()"));
+  //CSerial.println("   tfa: " + (String)tfa);
+  //CSerial.println("   bfa: " + (String)bfa);
+  //CSerial.println("yStart: " + (String)this->yStart);
   #ifdef HAS_ILI9341
     tft.writecommand(ILI9341_VSCRDEF); // Vertical scroll definition
     tft.writedata(tfa >> 8);           // Top Fixed Area line count
@@ -423,7 +428,6 @@ void Display::scrollAddress(uint16_t vsp) {
 
 
 // JPEG_functions
-/*
 void Display::drawJpeg(const char *filename, int xpos, int ypos) {
 
   // Open the named file (the Jpeg decoder library will close it after rendering image)
@@ -433,7 +437,7 @@ void Display::drawJpeg(const char *filename, int xpos, int ypos) {
 
   //ESP32 always seems to return 1 for jpegFile so this null trap does not work
   //if ( !jpegFile ) {
-  //  Serial.print("ERROR: File \""); Serial.print(filename); Serial.println ("\" not found!");
+  //  CSerial.print("ERROR: File \""); CSerial.print(filename); CSerial.println ("\" not found!");
   //  return;
   //}
 
@@ -451,10 +455,9 @@ void Display::drawJpeg(const char *filename, int xpos, int ypos) {
     jpegRender(xpos, ypos);
   }
   //else {
-  //  Serial.println(F("Jpeg file format not supported!"));
+  //  CSerial.println(F("Jpeg file format not supported!"));
   //}
 }
-*/
 
 /*void Display::setupDraw() {
   this->tft.drawLine(0, 0, 10, 0, TFT_MAGENTA);
@@ -473,7 +476,7 @@ void Display::drawStylus()
   boolean pressed = tft.getTouch(&x, &y);
 
   if ((x <= 10) && (y <= 10) && (pressed)) {
-    //Serial.println(F("Exit draw function"));
+    //CSerial.println(F("Exit draw function"));
     this->draw_tft = false;
     this->exit_draw = true;
     return;
@@ -518,10 +521,10 @@ void Display::drawStylus()
     xlast = x;
     ylast = y;
     AH = 0;
-    //Serial.print("x,y = ");
-    //Serial.print(x);
-    //Serial.print(",");
-    //Serial.println(y);
+    //CSerial.print("x,y = ");
+    //CSerial.print(x);
+    //CSerial.print(",");
+    //CSerial.println(y);
   } else if ( AH < 5 ) {
     AH++;
   } else if ( AH == 5 ) {
@@ -607,24 +610,24 @@ void Display::jpegRender(int xpos, int ypos) {
 //====================================================================================
 void Display::jpegInfo() {
 /*
-  Serial.println("===============");
-  Serial.println("JPEG image info");
-  Serial.println("===============");
-  Serial.print  ("Width      :"); Serial.println(JpegDec.width);
-  Serial.print  ("Height     :"); Serial.println(JpegDec.height);
-  Serial.print  ("Components :"); Serial.println(JpegDec.comps);
-  Serial.print  ("MCU / row  :"); Serial.println(JpegDec.MCUSPerRow);
-  Serial.print  ("MCU / col  :"); Serial.println(JpegDec.MCUSPerCol);
-  Serial.print  ("Scan type  :"); Serial.println(JpegDec.scanType);
-  Serial.print  ("MCU width  :"); Serial.println(JpegDec.MCUWidth);
-  Serial.print  ("MCU height :"); Serial.println(JpegDec.MCUHeight);
-  Serial.println("===============");
-  Serial.println("");
+  CSerial.println("===============");
+  CSerial.println("JPEG image info");
+  CSerial.println("===============");
+  CSerial.print  ("Width      :"); CSerial.println(JpegDec.width);
+  CSerial.print  ("Height     :"); CSerial.println(JpegDec.height);
+  CSerial.print  ("Components :"); CSerial.println(JpegDec.comps);
+  CSerial.print  ("MCU / row  :"); CSerial.println(JpegDec.MCUSPerRow);
+  CSerial.print  ("MCU / col  :"); CSerial.println(JpegDec.MCUSPerCol);
+  CSerial.print  ("Scan type  :"); CSerial.println(JpegDec.scanType);
+  CSerial.print  ("MCU width  :"); CSerial.println(JpegDec.MCUWidth);
+  CSerial.print  ("MCU height :"); CSerial.println(JpegDec.MCUHeight);
+  CSerial.println("===============");
+  CSerial.println("");
   */
 }
 
 //====================================================================================
-//   Open a Jpeg file and send it to the Serial port in a C array compatible format
+//   Open a Jpeg file and send it to the CSerial port in a C array compatible format
 //====================================================================================
 void createArray(const char *filename) {
   fs::File jpgFile;
@@ -635,42 +638,42 @@ void createArray(const char *filename) {
   #else
   jpgFile = FFat.open( filename, "r");    // File handle reference for FFat
   #endif
-  
+
   //  File jpgFile = SD.open( filename, FILE_READ);  // or, file handle reference for SD library
 
   if ( !jpgFile ) {
-    Serial.print("ERROR: File \""); Serial.print(filename); Serial.println ("\" not found!");
+    CSerial.print("ERROR: File \""); CSerial.print(filename); CSerial.println ("\" not found!");
     return;
   }
 
   uint8_t data;
   byte line_len = 0;
-  Serial.println("");
-  Serial.println(F("// Generated by a JPEGDecoder library example sketch:"));
-  Serial.println(F("// https://github.com/Bodmer/JPEGDecoder"));
-  Serial.println("");
-  Serial.println(F("#if defined(__AVR__)"));
-  Serial.println(F("  #include <avr/pgmspace.h>"));
-  Serial.println(F("#endif"));
-  Serial.println("");
-  Serial.print  (F("const uint8_t "));
-  while (*filename != '.') Serial.print(*filename++);
-  Serial.println(F("[] PROGMEM = {")); // PROGMEM added for AVR processors, it is ignored by Due
+  CSerial.println("");
+  CSerial.println(F("// Generated by a JPEGDecoder library example sketch:"));
+  CSerial.println(F("// https://github.com/Bodmer/JPEGDecoder"));
+  CSerial.println("");
+  CSerial.println(F("#if defined(__AVR__)"));
+  CSerial.println(F("  #include <avr/pgmspace.h>"));
+  CSerial.println(F("#endif"));
+  CSerial.println("");
+  CSerial.print  (F("const uint8_t "));
+  while (*filename != '.') CSerial.print(*filename++);
+  CSerial.println(F("[] PROGMEM = {")); // PROGMEM added for AVR processors, it is ignored by Due
 
   while ( jpgFile.available()) {
 
     data = jpgFile.read();
-    Serial.print("0x"); if (abs(data) < 16) Serial.print("0");
-    Serial.print(data, HEX); Serial.print(",");// Add value and comma
+    CSerial.print("0x"); if (abs(data) < 16) CSerial.print("0");
+    CSerial.print(data, HEX); CSerial.print(",");// Add value and comma
     line_len++;
     if ( line_len >= 32) {
       line_len = 0;
-      Serial.println();
+      CSerial.println();
     }
 
   }
 
-  Serial.println("};\r\n");
+  CSerial.println("};\r\n");
   jpgFile.close();
 }
 
@@ -680,8 +683,8 @@ void createArray(const char *filename) {
 
 #ifdef ESP8266
 void Display::listFiles(void) {
-  Serial.println();
-  Serial.println(F("Files found:"));
+  CSerial.println();
+  CSerial.println(F("Files found:"));
 
   #ifndef USE_FFAT
   fs::Dir dir = SPIFFS.openDir("/"); // Root directory
@@ -691,25 +694,25 @@ void Display::listFiles(void) {
 
   String  line = "=====================================";
 
-  Serial.println(line);
-  Serial.println(F("  File name               Size"));
-  Serial.println(line);
+  CSerial.println(line);
+  CSerial.println(F("  File name               Size"));
+  CSerial.println(line);
 
   while (dir.next()) {
     String fileName = dir.fileName();
-    Serial.print(fileName);
+    CSerial.print(fileName);
     int spaces = 21 - fileName.length(); // Tabulate nicely
-    while (spaces--) Serial.print(" ");
+    while (spaces--) CSerial.print(" ");
 
     fs::File f = dir.openFile("r");
     String fileSize = (String) f.size();
     spaces = 10 - fileSize.length(); // Tabulate nicely
-    while (spaces--) Serial.print(" ");
-    Serial.println(fileSize + " bytes");
+    while (spaces--) CSerial.print(" ");
+    CSerial.println(fileSize + " bytes");
   }
 
-  Serial.println(line);
-  Serial.println();
+  CSerial.println(line);
+  CSerial.println();
   delay(1000);
 }
 #endif
@@ -728,23 +731,23 @@ void Display::listFiles(void) {
 
 void Display::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
 
-  Serial.println();
-  Serial.println(F("Files found:"));
+  CSerial.println();
+  CSerial.println(F("Files found:"));
 
-  Serial.printf("Listing directory: %s\n", "/");
+  CSerial.printf("Listing directory: %s\n", "/");
   String  line = "=====================================";
 
-  Serial.println(line);
-  Serial.println(F("  File name               Size"));
-  Serial.println(line);
+  CSerial.println(line);
+  CSerial.println(F("  File name               Size"));
+  CSerial.println(line);
 
   fs::File root = fs.open(dirname);
   if (!root) {
-    Serial.println(F("Failed to open directory"));
+    CSerial.println(F("Failed to open directory"));
     return;
   }
   if (!root.isDirectory()) {
-    Serial.println(F("Not a directory"));
+    CSerial.println(F("Not a directory"));
     return;
   }
 
@@ -752,28 +755,28 @@ void Display::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   while (file) {
 
     if (file.isDirectory()) {
-      Serial.print("DIR : ");
+      CSerial.print("DIR : ");
       String fileName = file.name();
-      Serial.print(fileName);
+      CSerial.print(fileName);
       if (levels) {
         listDir(fs, file.name(), levels - 1);
       }
     } else {
       String fileName = file.name();
-      Serial.print("  " + fileName);
+      CSerial.print("  " + fileName);
       int spaces = 20 - fileName.length(); // Tabulate nicely
-      while (spaces--) Serial.print(" ");
+      while (spaces--) CSerial.print(" ");
       String fileSize = (String) file.size();
       spaces = 10 - fileSize.length(); // Tabulate nicely
-      while (spaces--) Serial.print(" ");
-      Serial.println(fileSize + " bytes");
+      while (spaces--) CSerial.print(" ");
+      CSerial.println(fileSize + " bytes");
     }
 
     file = root.openNextFile();
   }
 
-  Serial.println(line);
-  Serial.println();
+  CSerial.println(line);
+  CSerial.println();
   delay(1000);
 }
 #endif
@@ -782,7 +785,7 @@ void Display::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
 void Display::updateBanner(String msg)
 {
   //this->img.deleteSprite();
-  
+
   //this->img.setColorDepth(8);
 
   //this->img.createSprite(SCREEN_WIDTH, TEXT_HEIGHT);
@@ -834,7 +837,7 @@ void Display::buildBanner(String msg, int xpos)
 }
 
 void Display::main(uint8_t scan_mode)
-{  
+{
   if ((scan_mode == LV_JOIN_WIFI) ||
       (scan_mode == LV_ADD_SSID))
     lv_task_handler();

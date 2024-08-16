@@ -78,7 +78,7 @@ PROGMEM bool my_touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * d
 
 #ifdef LILYGO_T_DISPLAY_S3R8
 PROGMEM static lv_disp_drv_t disp_buf;
-PROGMEM static lv_color_t buf[TFT_WIDTH * 10];
+PROGMEM static lv_color_t buf[SCREEN_WIDTH * 10];
 #else
 PROGMEM static lv_disp_buf_t disp_buf;
 PROGMEM static lv_color_t buf[LV_HOR_RES_MAX * 10];
